@@ -5,4 +5,5 @@ export enum Capability {
   MemoryWrite = "memory_write",
   ModelInference = "model_inference",
   MemoryRead = "memory_read",
+  ToolInvoke = "tool_invoke",
 }
