@@ -1,4 +1,6 @@
 import { isAgentExecutionDisabled } from "../cli/agent-exec-policy.js";
+import { decideRouting } from "../routing/tiered-routing.js";
+import { ExecutionState } from "..agent/exec/state.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -185,22 +187,11 @@ export async function agentCliCommand(
     return;
   }
 
-  const localOpts = {
-    ...opts,
-    agentId: opts.agent,
-    replyAccountId: opts.replyAccount,
-  };
+  const decision = decideRouting();
 
-  if (opts.local === true) {
-    return await agentCommand(localOpts, runtime, deps);
-  }
+  runtime.log?.(
+     'Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}'
+);
 
-  try {
-    return await agentViaGatewayCommand(opts, runtime);
-  } catch (err) {
-    runtime.error?.(
-      'Gateway agent failed; falling back to embedded: ${String(err)}'
-    );
-    return await agentCommand(localOpts, runtime, deps);
-  }
+  return;
 }
