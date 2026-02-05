@@ -204,11 +204,16 @@ export async function agentCliCommand(
 
   if (
     !executor.capabilities.includes(Capability.Execute) ||
-  !policy.allow.includes(Capability.Execute)
-) {
-  runtime.error?.("Executor denied by execution policy");
-  return;
-}
+    !policy.allow.includes(Capability.Execute) ||
+    !policy.intents.includes(decision.intent)
+  ) {
+    runtime.error?.("Executor denied by execution policy");
+    executionTrace.push({
+      intent: decision.intent,
+      allowed: false,
+    });
+    return;
+  }
 
   const result = await executor.execute({
     message: opts.message,
