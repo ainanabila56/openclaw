@@ -187,7 +187,7 @@ export async function agentCliCommand(
     return;
   }
 
-  const decision = decideRouting();
+  const decision = decideRouting(opts.message);
 
   runtime.log?.(
      'Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}'

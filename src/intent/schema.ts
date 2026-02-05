@@ -1,4 +1,9 @@
+export type IntentLabel =
+  | "unknown"
+  | "system_query"
+  | "user_message";
+
 export type IntentResult = {
-  label: "unknown";
-  confidence: 0;
+  label: IntentLabel;
+  confidence: number;
 };
