@@ -1,4 +1,6 @@
 import { Capability } from "./capabilities";
+import type { Model } from "../model/model";
+import { allowModelUsage } from "../model/policy";
 
 import type { AgentExecutor, AgentExecInput, AgentExecOutput } from "./agent-executor";
 
