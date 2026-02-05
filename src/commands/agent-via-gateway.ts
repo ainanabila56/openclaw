@@ -1,7 +1,9 @@
 import { isAgentExecutionDisabled } from "../cli/agent-exec-policy.js";
 import { decideRouting } from "../routing/tiered-routing.js";
-import { ExecutionState } from "..agent/exec/state.js";
+import { ExecutionState } from "../agent/exec/state.js";
 import { Capability } from "../agent/exec/capabilities.js";
+import { getExecutionPolicy } from "../policy/execution-policy.js";
+import { executionTrace } from "../agent/exec/trace.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -197,8 +199,14 @@ export async function agentCliCommand(
   if (decision.tier === "local-intent" && decision.executable) {
   const executor = selectExecutor();
 
-  if (!executor.capabilities.includes(Capability.Execute)) {
-  runtime.error?.("Executor denied: missing Execute capability");
+
+  const policy = getExecutionPolicy();
+
+  if (
+    !executor.capabilities.includes(Capability.Execute) ||
+  !policy.allow.includes(Capability.Execute)
+) {
+  runtime.error?.("Executor denied by execution policy");
   return;
 }
 
@@ -211,6 +219,12 @@ export async function agentCliCommand(
   result.payloads?.forEach((p) => {
     if (p.text) runtime.log?.(p.text);
   });
+
+
+  executionTrace.push({
+  intent: decision.intent,
+  allowed: true,
+});
 
   return;
 }
