@@ -78,3 +78,7 @@ export interface MemorySearchManager {
   probeVectorAvailability(): Promise<boolean>;
   close?(): Promise<void>;
 }
+
+export type MemorySummary = {
+  text: string;
+};

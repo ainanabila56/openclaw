@@ -4,6 +4,7 @@ import { ExecutionState } from "../agent/exec/state.js";
 import { Capability } from "../agent/exec/capabilities.js";
 import { getExecutionPolicy } from "../policy/execution-policy.js";
 import { executionTrace } from "../agent/exec/trace.js";
+import { selectExecutor } from "../agent/exec/select-executor.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -193,7 +194,7 @@ export async function agentCliCommand(
   const decision = decideRouting(opts.message);
 
   runtime.log?.(
-     'Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}'
+  `Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}`
 );
 
   if (decision.tier === "local-intent" && decision.executable) {
@@ -214,6 +215,10 @@ export async function agentCliCommand(
     });
     return;
   }
+
+  const canReadMemory =
+  executor.capabilities.includes(Capability.MemoryRead) &&
+  policy.allow.includes(Capability.MemoryRead);
 
   const result = await executor.execute({
     message: opts.message,

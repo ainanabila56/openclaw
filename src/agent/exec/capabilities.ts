@@ -4,4 +4,5 @@ export enum Capability {
   Network = "network",
   MemoryWrite = "memory_write",
   ModelInference = "model_inference",
+  MemoryRead = "memory_read",
 }
