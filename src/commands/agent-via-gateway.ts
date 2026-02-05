@@ -1,6 +1,7 @@
 import { isAgentExecutionDisabled } from "../cli/agent-exec-policy.js";
 import { decideRouting } from "../routing/tiered-routing.js";
 import { ExecutionState } from "..agent/exec/state.js";
+import { Capability } from "../agent/exec/capabilities.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -195,6 +196,11 @@ export async function agentCliCommand(
 
   if (decision.tier === "local-intent" && decision.executable) {
   const executor = selectExecutor();
+
+  if (!executor.capabilities.includes(Capability.Execute)) {
+  runtime.error?.("Executor denied: missing Execute capability");
+  return;
+}
 
   const result = await executor.execute({
     message: opts.message,

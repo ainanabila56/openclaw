@@ -1,3 +1,6 @@
+import type { Capability } from "./capabilities";
+
+
 export type AgentExecInput = {
   message: string;
   agentId?: string;
@@ -10,5 +13,6 @@ export type AgentExecOutput = {
 };
 
 export interface AgentExecutor {
+  readonly capabilities: Capability[];
   execute(input: AgentExecInput): Promise<AgentExecOutput>;
 }
