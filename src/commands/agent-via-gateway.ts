@@ -193,5 +193,21 @@ export async function agentCliCommand(
      'Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}'
 );
 
+  if (decision.tier === "local-intent" && decision.executable) {
+  const executor = selectExecutor();
+
+  const result = await executor.execute({
+    message: opts.message,
+    agentId: opts.agent,
+    sessionId: opts.sessionId,
+  });
+
+  result.payloads?.forEach((p) => {
+    if (p.text) runtime.log?.(p.text);
+  });
+
+  return;
+}
+
   return;
 }
