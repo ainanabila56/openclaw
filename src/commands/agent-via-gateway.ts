@@ -198,7 +198,7 @@ export async function agentCliCommand(
 );
 
   if (decision.tier === "local-intent" && decision.executable) {
-  const executor = selectExecutor();
+  const executor = selectExecutor(decision.intent);
 
 
   const policy = getExecutionPolicy();
