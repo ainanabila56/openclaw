@@ -5,6 +5,7 @@ import { Capability } from "../agent/exec/capabilities.js";
 import { getExecutionPolicy } from "../policy/execution-policy.js";
 import { executionTrace } from "../agent/exec/trace.js";
 import { selectExecutor } from "../agent/exec/select-executor.js";
+import { TraceBuilder, formatTrace, nextRequestId } from "../agent/trace/index.js";
 import type { CliDeps } from "../cli/deps.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { listAgentIds } from "../agents/agent-scope.js";
@@ -184,14 +185,46 @@ export async function agentCliCommand(
   runtime: RuntimeEnv,
   deps?: CliDeps,
 ) {
+
+  const trace = new TraceBuilder({
+    request_id: nextRequestId("agent"),
+    channel: "cli",
+    session_id: opts.sessionId ?? "cli",
+    message: opts.message,
+  });
+
+  trace.add({ kind: "entry" });
+
   if (isAgentExecutionDisabled()) {
-    runtime.log?.(
-      "Agent execution is disabled (Phase 1 hardening). No gateway calls, embedded agents, models, tools, or memory were invoked.",
-    );
-    return;
+  trace.add({
+    kind: "env_gate",
+    decision: "deny",
+    reason_code: "execution_disabled",
+  });
+
+  trace.finalize({
+    decision: "deny",
+    reason_code: "execution_disabled",
+  });
+
+  runtime.log?.(
+    "Agent execution is disabled (Phase 1 hardening). No gateway calls, embedded agents, models, tools, or memory were invoked.",
+  );
+
+  if (opts.trace) {
+    runtime.log?.(JSON.stringify(trace, null, 2));
   }
 
+  return;
+}
+
   const decision = decideRouting(opts.message);
+
+  trace.add({
+    kind: "tier_route",
+    decision: "allow",
+    detail: { tier: decision.tier, intent: decision.intent },
+  });
 
   runtime.log?.(
   `Execution state: ${ExecutionState.Routed}, tier: ${decision.tier}`
@@ -205,14 +238,29 @@ export async function agentCliCommand(
 
   if (
     !executor.capabilities.includes(Capability.Execute) ||
-    !policy.allow.includes(Capability.Execute) ||
     !policy.intents.includes(decision.intent)
   ) {
-    runtime.error?.("Executor denied by execution policy");
-    executionTrace.push({
-      intent: decision.intent,
-      allowed: false,
+    trace.add({
+      kind: "policy_gate",
+      decision: "deny",
+      reason_code: "policy_rule_deny",
+      detail: {
+        intent: decision.intent,
+        executor: executor.id,
+      },
     });
+
+    trace.finalize({
+      decision: "deny",
+      reason_code: "policy_rule_deny",
+    });
+
+    runtime.error?.("Executor denied by execution policy");
+
+    if (opts.trace) {
+      runtime.log?.(JSON.stringify(trace, null, 2));
+    }
+
     return;
   }
 
@@ -220,24 +268,57 @@ export async function agentCliCommand(
   executor.capabilities.includes(Capability.MemoryRead) &&
   policy.allow.includes(Capability.MemoryRead);
 
+  trace.add({
+    kind: "executor_select",
+    decision: "allow",
+    detail: {
+      executor: executor.id,
+      capabilities: executor.capabilities,
+    },
+  });
+
   const result = await executor.execute({
     message: opts.message,
     agentId: opts.agent,
     sessionId: opts.sessionId,
   });
 
+  trace.add({
+    kind: "executor_run",
+    decision: "allow",
+  });
+
   result.payloads?.forEach((p) => {
     if (p.text) runtime.log?.(p.text);
   });
 
+  trace.finalize({
+    decision: "allow",
+    reason_code: "ok",
+  });
 
-  executionTrace.push({
-  intent: decision.intent,
-  allowed: true,
-});
+  if (opts.trace) {
+    runtime.log?.(JSON.stringify(trace, null, 2));
+  }
 
   return;
 }
+
+  trace.add({
+    kind: "executor_select",
+    decision: "deny",
+    reason_code: "no_executor",
+    detail: { tier: decision.tier },
+  });
+
+  trace.finalize({
+    decision: "deny",
+    reason_code: "no_executor",
+  });
+
+  if (opts.trace) {
+    runtime.log?.(JSON.stringify(trace, null, 2));
+  }
 
   return;
 }
