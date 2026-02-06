@@ -1,4 +1,4 @@
-import { Capability } from "./capabilities";
+import { Capability } from "../exec/capabilities";
 import type {
   AgentExecutor,
   AgentExecInput,
@@ -12,6 +12,8 @@ import { NullMemory } from "../../memory/null-memory";
 import { UppercaseTool } from "../../tools/uppercase-tool";
 
 export class LocalExecutor implements AgentExecutor {
+  readonly id = "local";
+
   readonly capabilities = [
     Capability.Execute,
     Capability.ReadOnly,
