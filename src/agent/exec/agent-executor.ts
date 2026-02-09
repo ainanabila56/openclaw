@@ -1,18 +1,12 @@
-import type { Capability } from "./capabilities";
-
+import type { ExecutionPolicyDecision } from "../policy/execution-policy-types";
 
 export type AgentExecInput = {
-  message: string;
-  agentId?: string;
-  sessionId?: string;
-};
+  readonly message: string;
+  readonly agentId?: string;
+  readonly sessionId?: string;
 
-export type AgentExecOutput = {
-  payloads?: Array<{ text?: string }>;
-  meta?: unknown;
+  // Phase 19 additions (authoritative)
+  readonly intent: string;
+  readonly requestId: string;
+  readonly policyDecision: ExecutionPolicyDecision;
 };
-
-export interface AgentExecutor {
-  readonly capabilities: Capability[];
-  execute(input: AgentExecInput): Promise<AgentExecOutput>;
-}

@@ -1,7 +1,16 @@
+export type ModelPolicyContext = {
+  readonly request_id: string;
+  readonly session_id: string;
+  readonly intent: string;
+  readonly allowed_tools: readonly string[];
+  readonly allowed_memory_write: boolean;
+};
+
 export type ModelInput = {
-  prompt: string;
+  readonly policy: ModelPolicyContext;
+  readonly prompt: string; // already constructed, sanitized, executor-owned
 };
 
 export type ModelOutput = {
-  text: string;
+  readonly text: string;
 };

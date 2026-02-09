@@ -1,11 +1,16 @@
-import type { Model, ModelInput, ModelOutput } from "./model";
+import type { ModelInput, ModelOutput } from "./model-types";
 
-export class LocalRuleModel implements Model {
+export class LocalRuleModel {
   async run(input: ModelInput): Promise<ModelOutput> {
-    if (/status|health/i.test(input.prompt)) {
-      return { text: "System is running normally." };
-    }
+    // The model is deliberately constrained:
+    // - sees only input.prompt and policy metadata
+    // - cannot see raw user message object
+    // - cannot access tools/memory/fs/net
 
-    return { text: "Message received." };
+    const text = input.prompt.includes("status")
+      ? "Status: ok (rule model)"
+      : "Rule model response";
+
+    return { text };
   }
 }

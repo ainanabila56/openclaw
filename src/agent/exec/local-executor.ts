@@ -5,16 +5,15 @@ import type {
   AgentExecOutput,
 } from "./agent-executor";
 
-import { allowModelUsage } from "../model/policy";
 import { allowToolUsage } from "../../tools/policy";
-
-import { LocalRuleModel } from "../model/local-model";
 
 import { getTool } from "../../tools/registry";
 import type { PureToolContext } from "../../tools/tool";
 
 import { InMemorySummary } from "../../memory/in-memory-summary";
 import type { WritableMemory } from "../../memory/memory-types";
+
+import { buildModelInput, runModelIfEnabled } from "../model/model-gate";
 
 export class LocalExecutor implements AgentExecutor {
   readonly id = "local";
@@ -34,23 +33,30 @@ export class LocalExecutor implements AgentExecutor {
 
     const toolContext: PureToolContext = {
       request_id: input.requestId,
-      session_id: input.sessionId,
+      session_id: input.sessionId ?? "unknown",
       intent: input.intent,
     };
 
     // ------------------------------------------------------------
-    // 1) MODEL PATH (policy-gated, memory-write allowed)
+    // 1) MODEL PATH (isolated via model gate)
     // ------------------------------------------------------------
-    if (allowModelUsage()) {
-      const model = new LocalRuleModel();
-      const output = await model.run({ prompt: input.message });
+    const prompt = summary
+      ? `Context: ${summary.text}\n\nUser: ${input.message}`
+      : `User: ${input.message}`;
 
+    const modelInput = buildModelInput(input, prompt);
+    const modelOut = await runModelIfEnabled(modelInput);
+
+    if (modelOut) {
       let memoryWritten = false;
 
-      if (this.capabilities.includes(Capability.MemoryWrite)) {
+      if (
+        this.capabilities.includes(Capability.MemoryWrite) &&
+        modelInput.policy.allowed_memory_write
+      ) {
         memory.writeSummary(input.sessionId, {
-          text: output.text.slice(0, 500),
-          tokens: Math.min(output.text.length, 256),
+          text: modelOut.text.slice(0, 500),
+          tokens: Math.min(modelOut.text.length, 256),
         });
         memoryWritten = true;
       }
@@ -59,8 +65,8 @@ export class LocalExecutor implements AgentExecutor {
         payloads: [
           {
             text: summary
-              ? `Context: ${summary.text}\n\n${output.text}`
-              : output.text,
+              ? `Context: ${summary.text}\n\n${modelOut.text}`
+              : modelOut.text,
           },
         ],
         meta: {
@@ -73,28 +79,23 @@ export class LocalExecutor implements AgentExecutor {
     }
 
     // ------------------------------------------------------------
-    // 2) TOOL PATH (pure, sync, NO memory write)
+    // 2) TOOL PATH (pure, sync, no memory write)
     // ------------------------------------------------------------
     if (
       this.capabilities.includes(Capability.ToolInvoke) &&
       allowToolUsage()
     ) {
       const tool = getTool("uppercase");
-      if (!tool) {
-        throw new Error("Uppercase tool not registered");
-      }
+      if (!tool) throw new Error("Uppercase tool not registered");
 
-      const toolOutput = tool.run(
-        { text: input.message },
-        toolContext
-      );
+      const toolOut = tool.run({ text: input.message }, toolContext);
 
       return {
         payloads: [
           {
             text: summary
-              ? `Context: ${summary.text}\n\n${toolOutput.text}`
-              : toolOutput.text,
+              ? `Context: ${summary.text}\n\n${toolOut.text}`
+              : toolOut.text,
           },
         ],
         meta: {
@@ -107,7 +108,7 @@ export class LocalExecutor implements AgentExecutor {
     }
 
     // ------------------------------------------------------------
-    // 3) DETERMINISTIC FALLBACK (no model, no tool, no memory write)
+    // 3) DETERMINISTIC FALLBACK
     // ------------------------------------------------------------
     return {
       payloads: [

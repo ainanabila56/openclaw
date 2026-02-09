@@ -269,6 +269,7 @@ export async function agentCliCommand(opts, runtime, deps) {
       message: opts.message,
       agentId: opts.agent,
       sessionId: opts.sessionId,
+      policyDecision: decision,
     });
 
     trace.add({
