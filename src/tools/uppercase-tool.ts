@@ -1,10 +1,20 @@
-import type { Tool } from "./tool";
+import { z } from "zod";
+import type { PureTool } from "./tool";
 import type { ToolInput, ToolOutput } from "./types";
 
-export class UppercaseTool implements Tool {
-  readonly id = "uppercase";
+export const UppercaseTool: PureTool<ToolInput, ToolOutput> = {
+  id: "uppercase",
 
-  run(input: ToolInput): ToolOutput {
+  schema: {
+    input: z.object({
+      text: z.string(),
+    }),
+    output: z.object({
+      text: z.string(),
+    }),
+  },
+
+  run(input) {
     return { text: input.text.toUpperCase() };
-  }
-}
+  },
+};

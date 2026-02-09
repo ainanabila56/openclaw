@@ -7,8 +7,11 @@ import type {
 
 import { allowModelUsage } from "../model/policy";
 import { allowToolUsage } from "../../tools/policy";
+
 import { LocalRuleModel } from "../model/local-model";
-import { UppercaseTool } from "../../tools/uppercase-tool";
+
+import { getTool } from "../../tools/registry";
+import type { PureToolContext } from "../../tools/tool";
 
 import { InMemorySummary } from "../../memory/in-memory-summary";
 import type { WritableMemory } from "../../memory/memory-types";
@@ -29,13 +32,21 @@ export class LocalExecutor implements AgentExecutor {
     const memory: WritableMemory = new InMemorySummary();
     const summary = memory.getSummary(input.sessionId);
 
-    // 1) Model path (policy-gated)
+    const toolContext: PureToolContext = {
+      request_id: input.requestId,
+      session_id: input.sessionId,
+      intent: input.intent,
+    };
+
+    // ------------------------------------------------------------
+    // 1) MODEL PATH (policy-gated, memory-write allowed)
+    // ------------------------------------------------------------
     if (allowModelUsage()) {
       const model = new LocalRuleModel();
       const output = await model.run({ prompt: input.message });
 
-      // Controlled memory write (model output only)
       let memoryWritten = false;
+
       if (this.capabilities.includes(Capability.MemoryWrite)) {
         memory.writeSummary(input.sessionId, {
           text: output.text.slice(0, 500),
@@ -61,20 +72,29 @@ export class LocalExecutor implements AgentExecutor {
       };
     }
 
-    // 2) Tool path (pure, policy-gated — NO MEMORY WRITE)
+    // ------------------------------------------------------------
+    // 2) TOOL PATH (pure, sync, NO memory write)
+    // ------------------------------------------------------------
     if (
       this.capabilities.includes(Capability.ToolInvoke) &&
       allowToolUsage()
     ) {
-      const tool = new UppercaseTool();
-      const toolOut = tool.run({ text: input.message });
+      const tool = getTool("uppercase");
+      if (!tool) {
+        throw new Error("Uppercase tool not registered");
+      }
+
+      const toolOutput = tool.run(
+        { text: input.message },
+        toolContext
+      );
 
       return {
         payloads: [
           {
             text: summary
-              ? `Context: ${summary.text}\n\n${toolOut.text}`
-              : toolOut.text,
+              ? `Context: ${summary.text}\n\n${toolOutput.text}`
+              : toolOutput.text,
           },
         ],
         meta: {
@@ -86,7 +106,9 @@ export class LocalExecutor implements AgentExecutor {
       };
     }
 
-    // 3) Deterministic fallback (no memory write)
+    // ------------------------------------------------------------
+    // 3) DETERMINISTIC FALLBACK (no model, no tool, no memory write)
+    // ------------------------------------------------------------
     return {
       payloads: [
         {
