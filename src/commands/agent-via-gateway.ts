@@ -276,6 +276,13 @@ export async function agentCliCommand(opts, runtime, deps) {
       decision: "allow",
     });
 
+    if (result.meta?.memory_write === true) {
+      trace.add({
+        kind: "memory_write",
+        decision: "allow",
+      });
+    }
+
     result.payloads?.forEach((p) => {
       if (p.text) runtime.log?.(p.text);
     });

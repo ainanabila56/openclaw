@@ -15,6 +15,7 @@ const POLICY: ExecutionPolicyV2 = {
         Capability.ReadOnly,
         Capability.ModelInference,
         Capability.MemoryRead,
+	Capability.MemoryWrite,
         Capability.ToolInvoke,
       ],
     },
