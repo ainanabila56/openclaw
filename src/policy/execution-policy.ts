@@ -12,6 +12,8 @@ const POLICY: ExecutionPolicyV2 = {
       allowExecutors: ["local"], // must match executor.id
       allowCapabilities: [
         Capability.RespondText,
+	Capability.MemoryRead,
+	Capability.MemoryWrite,
       ],
     },
   ],

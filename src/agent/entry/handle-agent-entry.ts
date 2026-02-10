@@ -7,18 +7,26 @@ import { evaluatePolicy } from "../../policy/evaluate-policy";
 import { executionTrace } from "../exec/trace";
 import { Capability } from "../exec/capabilities";
 
-// Phase 23 carry-over: intent authority
 import { LocalSmlStub } from "../intent-authority";
-
-// Phase 24: governed main model
 import { LocalDevModel } from "../main-model/local-dev-model";
+
+import { InMemoryStore } from "../memory/in-memory-store";
+
+const memoryStore = new InMemoryStore();
+const SUMMARY_MAX_LEN = 500;
+
+function clampSummary(s: string): string {
+  if (s.length <= SUMMARY_MAX_LEN) return s;
+  return s.slice(0, SUMMARY_MAX_LEN);
+}
 
 export async function handleAgentEntry(
   req: AgentEntryRequest
 ): Promise<AgentExecOutput> {
   const message = req.message ?? "";
+  const agentId = req.agentId ?? "cli";
+  const sessionId = req.sessionId ?? "cli";
 
-  // reset trace per request
   executionTrace.length = 0;
 
   // -----------------------------
@@ -31,11 +39,12 @@ export async function handleAgentEntry(
     allowed: true,
   });
 
-  // -----------------------------
-  // Policy Evaluation
-  // -----------------------------
   const policyDef = getExecutionPolicy();
-  const policy = evaluatePolicy(policyDef, {
+
+  // -----------------------------
+  // Policy: respond:text (required)
+  // -----------------------------
+  const respondPolicy = evaluatePolicy(policyDef, {
     intent: intentResult.intent,
     executorId: "local",
     requestedCapabilities: [Capability.RespondText],
@@ -43,30 +52,74 @@ export async function handleAgentEntry(
 
   executionTrace.push({
     intent: intentResult.intent,
-    allowed: policy.decision === "allow",
+    allowed: respondPolicy.decision === "allow",
   });
 
-  // -----------------------------
-  // Capability Gate (Phase 24)
-  // -----------------------------
-  if (policy.decision !== "allow") {
+  if (respondPolicy.decision !== "allow") {
     return {
       payloads: [{ text: "Execution denied." }],
       meta: { trace: executionTrace },
     };
   }
 
+  // -----------------------------
+  // Policy: memory read (optional)
+  // -----------------------------
+  let memorySummary: string | undefined;
+
+  const memReadPolicy = evaluatePolicy(policyDef, {
+    intent: intentResult.intent,
+    executorId: "local",
+    requestedCapabilities: [Capability.RespondText, Capability.MemoryRead],
+  });
+
+  const memReadAllowed = memReadPolicy.decision === "allow";
+
+  if (memReadAllowed) {
+    const rec = await memoryStore.read({ agentId, sessionId });
+    memorySummary = rec?.summary;
+  }
+
   executionTrace.push({
     intent: intentResult.intent,
-    allowed: true,
+    allowed: memReadAllowed,
   });
 
   // -----------------------------
-  // Single Governed Model Reply
+  // Governed model reply
   // -----------------------------
   const reply = await LocalDevModel.generate({
     message,
     intent: intentResult.intent,
+    memorySummary,
+  });
+
+  // -----------------------------
+  // Policy: memory write (optional)
+  // -----------------------------
+  const memWritePolicy = evaluatePolicy(policyDef, {
+    intent: intentResult.intent,
+    executorId: "local",
+    requestedCapabilities: [Capability.RespondText, Capability.MemoryWrite],
+  });
+
+  const memWriteAllowed = memWritePolicy.decision === "allow";
+
+  if (memWriteAllowed) {
+    const summary =
+      typeof reply.summary === "string" && reply.summary.length > 0
+        ? reply.summary
+        : `last_user_message=${message.slice(0, 200)}`;
+
+    await memoryStore.write(
+      { agentId, sessionId },
+      { summary: clampSummary(summary), updatedAtIso: new Date().toISOString() }
+    );
+  }
+
+  executionTrace.push({
+    intent: intentResult.intent,
+    allowed: memWriteAllowed,
   });
 
   return {
