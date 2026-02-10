@@ -11,12 +11,7 @@ const POLICY: ExecutionPolicyV2 = {
       intent: "system_query" as IntentLabel,
       allowExecutors: ["local"], // must match executor.id
       allowCapabilities: [
-        Capability.Execute,
-        Capability.ReadOnly,
-        Capability.ModelInference,
-        Capability.MemoryRead,
-	Capability.MemoryWrite,
-        Capability.ToolInvoke,
+        Capability.RespondText,
       ],
     },
   ],

@@ -5,12 +5,13 @@ import { getExecutionPolicy } from "../../policy/execution-policy";
 import { evaluatePolicy } from "../../policy/evaluate-policy";
 
 import { executionTrace } from "../exec/trace";
-import { nextRequestId } from "../trace";
+import { Capability } from "../exec/capabilities";
 
-// Phase 23: local intent authority (simulated)
+// Phase 23 carry-over: intent authority
 import { LocalSmlStub } from "../intent-authority";
 
-const PHASE_23_HARD_BLOCK = true;
+// Phase 24: governed main model
+import { LocalDevModel } from "../main-model/local-dev-model";
 
 export async function handleAgentEntry(
   req: AgentEntryRequest
@@ -21,13 +22,13 @@ export async function handleAgentEntry(
   executionTrace.length = 0;
 
   // -----------------------------
-  // Phase 23 — Intent Authority
+  // Intent Authority
   // -----------------------------
   const intentResult = LocalSmlStub.inferIntent({ message });
 
   executionTrace.push({
     intent: intentResult.intent,
-    allowed: true, // intent resolution itself is not a permission
+    allowed: true,
   });
 
   // -----------------------------
@@ -37,7 +38,7 @@ export async function handleAgentEntry(
   const policy = evaluatePolicy(policyDef, {
     intent: intentResult.intent,
     executorId: "local",
-    requestedCapabilities: [],
+    requestedCapabilities: [Capability.RespondText],
   });
 
   executionTrace.push({
@@ -45,32 +46,31 @@ export async function handleAgentEntry(
     allowed: policy.decision === "allow",
   });
 
-
   // -----------------------------
-  // Phase 23 Hard Block
+  // Capability Gate (Phase 24)
   // -----------------------------
-  if (PHASE_23_HARD_BLOCK) {
+  if (policy.decision !== "allow") {
     return {
-      payloads: [
-        {
-          text: "Execution blocked (Phase 23: intent authority proof).",
-        },
-      ],
-      meta: {
-        trace: executionTrace,
-        intent: intentResult,
-        policy,
-        requestId: nextRequestId(),
-      },
+      payloads: [{ text: "Execution denied." }],
+      meta: { trace: executionTrace },
     };
   }
 
-  // ----------------------------------------------------
-  // NOTE:
-  // No executor selection
-  // No executor execution
-  // No tools
-  // No memory
-  // No side effects
-  // ----------------------------------------------------
+  executionTrace.push({
+    intent: intentResult.intent,
+    allowed: true,
+  });
+
+  // -----------------------------
+  // Single Governed Model Reply
+  // -----------------------------
+  const reply = await LocalDevModel.generate({
+    message,
+    intent: intentResult.intent,
+  });
+
+  return {
+    payloads: [{ text: reply.text }],
+    meta: { trace: executionTrace },
+  };
 }

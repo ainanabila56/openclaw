@@ -13,8 +13,9 @@ export async function agentCliCommand(
     trace?: boolean;
   }
 ) {
+
   const res = await handleAgentEntry({
-    message: opts.message,
+    message: deps.message ?? "",
     agentId: opts.agent,
     sessionId: runtime.sessionId ?? "cli",
     channel: "cli",

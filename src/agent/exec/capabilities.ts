@@ -6,4 +6,5 @@ export enum Capability {
   ModelInference = "model_inference",
   MemoryRead = "memory_read",
   ToolInvoke = "tool_invoke",
+  RespondText = "respond:text",
 }
