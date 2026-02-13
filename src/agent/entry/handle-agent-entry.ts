@@ -158,6 +158,7 @@ if (memWriteAllowed) {
     Capability.ToolInvoke,
     Capability.MemoryRead,
   ],
+  trace: executionTrace,
 });
 
 }

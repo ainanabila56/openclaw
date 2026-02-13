@@ -59,6 +59,7 @@ export class LocalExecutor implements AgentExecutor {
           model: "rule-based",
           memory: "sealed",
           memory_write: false,
+	  trace: input.trace
         },
       };
     }
@@ -88,6 +89,7 @@ export class LocalExecutor implements AgentExecutor {
           tool: tool.name,
           memory: "sealed",
           memory_write: false,
+	  trace: input.trace
         },
       };
     }
@@ -108,6 +110,7 @@ export class LocalExecutor implements AgentExecutor {
         deterministic: true,
         memory: "sealed",
         memory_write: false,
+	trace: input.trace
       },
     };
   }
