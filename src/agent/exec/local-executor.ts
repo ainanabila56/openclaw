@@ -25,7 +25,9 @@ export class LocalExecutor implements AgentExecutor {
     Capability.ToolInvoke,
   ];
 
+
   async execute(input: AgentExecInput): Promise<AgentExecOutput> {
+
     const memory: ReadOnlyMemory = createMemory();
     const summary = memory.getSummary(input.sessionId);
 
@@ -56,6 +58,7 @@ export class LocalExecutor implements AgentExecutor {
         ],
         meta: {
           executor: "local",
+	  path: "model",
           model: "rule-based",
           memory: "sealed",
           memory_write: false,
@@ -86,6 +89,7 @@ export class LocalExecutor implements AgentExecutor {
         ],
         meta: {
           executor: "local",
+	  path: "tool",
           tool: tool.name,
           memory: "sealed",
           memory_write: false,
@@ -107,6 +111,7 @@ export class LocalExecutor implements AgentExecutor {
       ],
       meta: {
         executor: "local",
+	path: "fallback",
         deterministic: true,
         memory: "sealed",
         memory_write: false,

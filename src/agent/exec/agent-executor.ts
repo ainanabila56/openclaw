@@ -11,4 +11,7 @@ export type AgentExecInput = {
   readonly intent: string;
   readonly requestId: string;
   readonly policyDecision: ExecutionPolicyDecision;
+
+  allowedCapabilities?: Capability[];
+  trace?: any[];
 };

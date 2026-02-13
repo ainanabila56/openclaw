@@ -16,6 +16,9 @@ import { planTool } from "../tools/tool-planner";
 import { LocalExecutor } from "../exec/local-executor";
 import * as crypto from "node:crypto";
 
+import { listTools } from "../../tools/registry";
+
+
 const memoryStore = new InMemoryStore();
 const SUMMARY_MAX_LEN = 500;
 
@@ -39,6 +42,7 @@ export async function handleAgentEntry(
   const intentResult = LocalSmlStub.inferIntent({ message });
 
   executionTrace.push({
+    stage: "intent_authority",
     intent: intentResult.intent,
     allowed: true,
   });
@@ -49,6 +53,7 @@ export async function handleAgentEntry(
   const toolPlan = planTool(intentResult.intent, message);
 
   executionTrace.push({
+    stage: "tool_planning",
     intent: intentResult.intent,
     allowed: toolPlan !== null,
   });
@@ -65,6 +70,7 @@ export async function handleAgentEntry(
   });
 
   executionTrace.push({
+    stage: "policy_respond",
     intent: intentResult.intent,
     allowed: respondPolicy.decision === "allow",
   });
@@ -95,6 +101,7 @@ export async function handleAgentEntry(
   }
 
   executionTrace.push({
+    stage: "memory_read",
     intent: intentResult.intent,
     allowed: memReadAllowed,
   });
@@ -136,16 +143,14 @@ if (memWriteAllowed) {
 
 
   executionTrace.push({
+    stage: "memory_write",
     intent: intentResult.intent,
     allowed: memWriteAllowed,
   });
 
-  // ------------------------------------------------------------
-  // 🔥 Phase 26 — Authoritative execution via LocalExecutor
-  // ------------------------------------------------------------
-  const executor = new LocalExecutor();
+  const executor = new LocalExecutor();  
 
-  return await executor.execute({
+  const execResult = await executor.execute({
   message,
   intent: intentResult.intent,
   requestId: crypto.randomUUID(),
@@ -160,5 +165,24 @@ if (memWriteAllowed) {
   ],
   trace: executionTrace,
 });
+
+// ------------------------------------------------------------
+// Phase 26 FINAL — executor authority trace
+// ------------------------------------------------------------
+executionTrace.push({
+  stage: "executor_path",
+  intent: intentResult.intent,
+  allowed: true,
+  path: toolPlan ? "tool" : "model_or_fallback",
+});
+
+return {
+  ...execResult,
+  meta: {
+    ...execResult.meta,
+    trace: executionTrace,
+  },
+};
+
 
 }
