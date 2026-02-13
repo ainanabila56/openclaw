@@ -1,4 +1,5 @@
 import type { PureTool } from "./pure-tool";
+import { UppercaseTool } from "./uppercase-tool";
 
 /**
  * Single authoritative tool registry.
@@ -20,3 +21,15 @@ export function getTool(name: string): PureTool<any, any> | undefined {
 export function listTools(): readonly PureTool<any, any>[] {
   return Array.from(TOOL_REGISTRY.values());
 }
+
+/**
+ * Find all tools that provide a given capability.
+ * Pure lookup only — no execution.
+ */
+export function findToolsByCapability(
+  capability: string,
+): readonly PureTool<any, any>[] {
+  return listTools().filter(t => t.capability === capability);
+}
+
+registerTool(UppercaseTool);

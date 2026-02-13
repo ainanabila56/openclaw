@@ -5,7 +5,6 @@ import type {
   AgentExecOutput,
 } from "./agent-executor";
 
-import { allowToolUsage } from "../../tools/policy";
 import { getTool } from "../../tools/registry";
 import type { PureToolContext } from "../../tools/tool";
 
@@ -67,9 +66,12 @@ export class LocalExecutor implements AgentExecutor {
     // ------------------------------------------------------------
     // 2) TOOL PATH (pure, sync, NO memory write)
     // ------------------------------------------------------------
-    if (this.capabilities.includes(Capability.ToolInvoke) && allowToolUsage()) {
-      const tool = getTool("uppercase");
-      if (!tool) throw new Error("Uppercase tool not registered");
+    if (
+      input.allowedCapabilities?.includes(Capability.ToolInvoke) &&
+      input.plannedTool
+    ) {
+      const tool = getTool(input.plannedTool);
+      if (!tool) throw new Error(`Planned tool not registered: ${input.plannedTool}`);
 
       const toolOut = tool.run({ text: input.message }, toolContext);
 
@@ -83,7 +85,7 @@ export class LocalExecutor implements AgentExecutor {
         ],
         meta: {
           executor: "local",
-          tool: tool.id,
+          tool: tool.name,
           memory: "sealed",
           memory_write: false,
         },

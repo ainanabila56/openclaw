@@ -11,6 +11,10 @@ import { LocalSmlStub } from "../intent-authority";
 import { LocalDevModel } from "../main-model/local-dev-model";
 
 import { InMemoryStore } from "../memory/in-memory-store";
+import { planTool } from "../tools/tool-planner";
+
+import { LocalExecutor } from "../exec/local-executor";
+import * as crypto from "node:crypto";
 
 const memoryStore = new InMemoryStore();
 const SUMMARY_MAX_LEN = 500;
@@ -37,6 +41,16 @@ export async function handleAgentEntry(
   executionTrace.push({
     intent: intentResult.intent,
     allowed: true,
+  });
+
+  // -----------------------------
+  // Tool Planning
+  // -----------------------------
+  const toolPlan = planTool(intentResult.intent, message);
+
+  executionTrace.push({
+    intent: intentResult.intent,
+    allowed: toolPlan !== null,
   });
 
   const policyDef = getExecutionPolicy();
@@ -105,25 +119,45 @@ export async function handleAgentEntry(
 
   const memWriteAllowed = memWritePolicy.decision === "allow";
 
-  if (memWriteAllowed) {
-    const summary =
-      typeof reply.summary === "string" && reply.summary.length > 0
-        ? reply.summary
-        : `last_user_message=${message.slice(0, 200)}`;
+if (memWriteAllowed) {
+  const summary =
+    typeof reply.summary === "string" && reply.summary.length > 0
+      ? reply.summary
+      : `last_user_message=${message.slice(0, 200)}`;
 
-    await memoryStore.write(
-      { agentId, sessionId },
-      { summary: clampSummary(summary), updatedAtIso: new Date().toISOString() }
-    );
-  }
+  await memoryStore.write(
+    { agentId, sessionId },
+    {
+      summary: clampSummary(summary),
+      updatedAtIso: new Date().toISOString(),
+    }
+  );
+}
+
 
   executionTrace.push({
     intent: intentResult.intent,
     allowed: memWriteAllowed,
   });
 
-  return {
-    payloads: [{ text: reply.text }],
-    meta: { trace: executionTrace },
-  };
+  // ------------------------------------------------------------
+  // 🔥 Phase 26 — Authoritative execution via LocalExecutor
+  // ------------------------------------------------------------
+  const executor = new LocalExecutor();
+
+  return await executor.execute({
+  message,
+  intent: intentResult.intent,
+  requestId: crypto.randomUUID(),
+  policyDecision: respondPolicy.decision,
+  sessionId,
+  agentId,
+  plannedTool: toolPlan?.toolName,
+  allowedCapabilities: [
+    Capability.RespondText,
+    Capability.ToolInvoke,
+    Capability.MemoryRead,
+  ],
+});
+
 }

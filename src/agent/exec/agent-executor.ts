@@ -4,6 +4,8 @@ export type AgentExecInput = {
   readonly message: string;
   readonly agentId?: string;
   readonly sessionId?: string;
+  readonly plannedTool?: string;
+
 
   // Phase 19 additions (authoritative)
   readonly intent: string;

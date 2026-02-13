@@ -20,6 +20,8 @@ export interface PureTool<I, O> {
   readonly name: string;
   readonly description?: string;
 
+  readonly capability: string;
+
   readonly schema: {
     readonly input: ZodType<I>;
     readonly output: ZodType<O>;

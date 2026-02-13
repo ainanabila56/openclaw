@@ -4,6 +4,9 @@ import type {
   PolicyEvalResult,
 } from "./policy-types";
 
+import { isCapabilityAllowed } from "../agent/governance/intentCapabilities";
+
+
 export function evaluatePolicy(
   policy: ExecutionPolicyV2,
   ctx: PolicyEvalContext,
@@ -27,14 +30,25 @@ export function evaluatePolicy(
   }
 
   for (const cap of ctx.requestedCapabilities) {
-    if (!rule.allowCapabilities.includes(cap)) {
-      return {
-        decision: "deny",
-        reason_code: "capability_not_allowed",
-        detail: { capability: cap },
-      };
-    }
+  // Check rule-level allow list
+  if (!rule.allowCapabilities.includes(cap)) {
+    return {
+      decision: "deny",
+      reason_code: "capability_not_allowed",
+      detail: { capability: cap },
+    };
   }
+
+  // NEW: check global intent → capability governance
+  if (!isCapabilityAllowed(ctx.intent, cap)) {
+    return {
+      decision: "deny",
+      reason_code: "capability_not_allowed_by_intent_map",
+      detail: { intent: ctx.intent, capability: cap },
+    };
+  }
+}
+
 
   return { decision: "allow", reason_code: "ok" };
 }

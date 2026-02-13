@@ -1,9 +1,10 @@
 import { z } from "zod";
-import type { PureTool } from "./tool";
-import type { ToolInput, ToolOutput } from "./types";
+import type { PureTool } from "./pure-tool";
 
-export const UppercaseTool: PureTool<ToolInput, ToolOutput> = {
-  id: "uppercase",
+export const UppercaseTool: PureTool<{ text: string }, { text: string }> = {
+  name: "uppercase",
+  description: "Convert text to uppercase",
+  capability: "text_transform",
 
   schema: {
     input: z.object({
