@@ -1,5 +1,3 @@
-console.log("🔥 EXECUTION POLICY LOADED");
-
 import { Capability } from "../agent/exec/capabilities";
 import type { ExecutionPolicyV2 } from "./policy-types";
 import type { IntentLabel } from "../intent/schema";

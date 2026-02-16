@@ -36,13 +36,30 @@ export async function handleAgentEntry(
 
   executionTrace.length = 0;
 
+// ------------------------------------------------------------
+// Trace bootstrap (authority start)
+// ------------------------------------------------------------
+const requestId = crypto.randomUUID();
+
+function pushTrace(stage: string, data: Record<string, any> = {}) {
+  executionTrace.push({
+    stage,
+    timestamp: new Date().toISOString(),
+    ...data,
+  });
+}
+
+pushTrace("trace_start", {
+  request_id: requestId,
+});
+
+
   // -----------------------------
   // Intent Authority
   // -----------------------------
   const intentResult = LocalSmlStub.inferIntent({ message });
 
-  executionTrace.push({
-    stage: "intent_authority",
+  pushTrace("intent_authority", {
     intent: intentResult.intent,
     allowed: true,
   });
@@ -52,8 +69,7 @@ export async function handleAgentEntry(
   // -----------------------------
   const toolPlan = planTool(intentResult.intent, message);
 
-  executionTrace.push({
-    stage: "tool_planning",
+  pushTrace("tool_planning", {
     intent: intentResult.intent,
     allowed: toolPlan !== null,
   });
@@ -69,10 +85,14 @@ export async function handleAgentEntry(
     requestedCapabilities: [Capability.RespondText],
   });
 
-  executionTrace.push({
-    stage: "policy_respond",
+  pushTrace("policy_respond", {
     intent: intentResult.intent,
     allowed: respondPolicy.decision === "allow",
+  });
+
+  pushTrace("policy_decision", {
+    request_id: requestId,
+    decision: respondPolicy.decision, // explicit authority decision
   });
 
   if (respondPolicy.decision !== "allow") {
@@ -100,8 +120,7 @@ export async function handleAgentEntry(
     memorySummary = rec?.summary;
   }
 
-  executionTrace.push({
-    stage: "memory_read",
+  pushTrace("memory_read", {
     intent: intentResult.intent,
     allowed: memReadAllowed,
   });
@@ -142,8 +161,7 @@ if (memWriteAllowed) {
 }
 
 
-  executionTrace.push({
-    stage: "memory_write",
+  pushTrace("memory_write", {
     intent: intentResult.intent,
     allowed: memWriteAllowed,
   });
@@ -153,7 +171,7 @@ if (memWriteAllowed) {
   const execResult = await executor.execute({
   message,
   intent: intentResult.intent,
-  requestId: crypto.randomUUID(),
+  requestId,
   policyDecision: respondPolicy.decision,
   sessionId,
   agentId,
@@ -169,8 +187,7 @@ if (memWriteAllowed) {
 // ------------------------------------------------------------
 // Phase 26 FINAL — executor authority trace
 // ------------------------------------------------------------
-executionTrace.push({
-  stage: "executor_path",
+pushTrace("executor_path", {
   intent: intentResult.intent,
   allowed: true,
   path: toolPlan ? "tool" : "model_or_fallback",

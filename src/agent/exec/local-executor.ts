@@ -27,6 +27,16 @@ export class LocalExecutor implements AgentExecutor {
 
 
   async execute(input: AgentExecInput): Promise<AgentExecOutput> {
+  try {
+
+  // ------------------------------------------------------------
+  // Trace — execution start (authoritative)
+  // ------------------------------------------------------------
+  input.trace?.push({
+    stage: "execute_start",
+    timestamp: new Date().toISOString(),
+    request_id: input.requestId,
+  });
 
     const memory: ReadOnlyMemory = createMemory();
     const summary = memory.getSummary(input.sessionId);
@@ -48,6 +58,17 @@ export class LocalExecutor implements AgentExecutor {
     const modelOut = await runModelIfEnabled(modelInput);
 
     if (modelOut) {
+
+    const executeEnd = new Date().toISOString();
+
+    input.trace?.push({
+      stage: "execute_end",
+      timestamp: executeEnd,
+      request_id: input.requestId,
+      executor_outcome: "success",
+      path: "model",
+    });
+
       return {
         payloads: [
           {
@@ -79,6 +100,16 @@ export class LocalExecutor implements AgentExecutor {
 
       const toolOut = tool.run({ text: input.message }, toolContext);
 
+      const executeEnd = new Date().toISOString();
+
+      input.trace?.push({
+        stage: "execute_end",
+        timestamp: executeEnd,
+	request_id: input.requestId,
+        executor_outcome: "success",
+        path: "tool",
+      });
+
       return {
         payloads: [
           {
@@ -101,6 +132,16 @@ export class LocalExecutor implements AgentExecutor {
     // ------------------------------------------------------------
     // 3) DETERMINISTIC FALLBACK
     // ------------------------------------------------------------
+    const executeEnd = new Date().toISOString();
+
+    input.trace?.push({
+      stage: "execute_end",
+      timestamp: executeEnd,
+      request_id: input.requestId,
+      executor_outcome: "success",
+      path: "fallback",
+    });
+
     return {
       payloads: [
         {
@@ -118,5 +159,18 @@ export class LocalExecutor implements AgentExecutor {
 	trace: input.trace
       },
     };
+    } catch (err: any) {
+    const executeEnd = new Date().toISOString();
+
+    input.trace?.push({
+      stage: "execute_end",
+      timestamp: executeEnd,
+      request_id: input.requestId,
+      executor_outcome: "error",
+      error: String(err?.message ?? err),
+    });
+
+    throw err; // preserve original behavior
   }
+} 
 }
