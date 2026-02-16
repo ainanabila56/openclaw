@@ -1,8 +1,8 @@
-import type { IntentResult, IntentLabel } from "./schema";
-import { ALL_INTENTS } from "./schema";
+import type { IntentResult, IntentLabel } from "./schema.js";
+import { INTENTS } from "./schema.js";
 
 function assertValidIntent(label: string): asserts label is IntentLabel {
-  if (!ALL_INTENTS.includes(label as IntentLabel)) {
+  if (!INTENTS.includes(label as IntentLabel)) {
     throw new Error(`Invalid intent emitted: ${label}`);
   }
 }

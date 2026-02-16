@@ -1,4 +1,7 @@
-import type { Capability } from "../agent/exec/capabilities";
+import type { Capability } from "../agent/exec/capabilities.js";
+import type { IntentLabel } from "../intent/schema.js";
+
+
 export type IntentValue = string;
 
 export type PolicyDecision = "allow" | "deny";
@@ -10,7 +13,7 @@ export type PolicyReasonCode =
   | "capability_not_allowed";
 
 export interface PolicyEvalContext {
-  intent: Intent;
+  intent: IntentLabel;
   executorId: string;
   requestedCapabilities: readonly Capability[];
 }
@@ -22,7 +25,7 @@ export interface PolicyEvalResult {
 }
 
 export interface IntentPolicyRule {
-  intent: Intent;
+  intent: IntentLabel;
   allowExecutors: readonly string[];
   allowCapabilities: readonly Capability[];
 }
@@ -30,5 +33,5 @@ export interface IntentPolicyRule {
 export interface ExecutionPolicyV2 {
   version: 2;
   defaultDecision: "deny";
-  rules: readonly IntentPolicyRule[];
+  rules: Readonly<Record<IntentLabel, IntentPolicyRule>>;
 }

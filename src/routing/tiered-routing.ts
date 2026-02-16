@@ -1,5 +1,5 @@
 import { inferIntent } from "../intent/infer";
-import type { IntentLabel } from "../intent/schema";
+import type { IntentLabel } from "../intent/schema.js";
 
 export type RoutingDecision = {
   tier: "local-intent";

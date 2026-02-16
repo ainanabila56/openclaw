@@ -1,5 +1,5 @@
 import { Capability } from "../exec/capabilities";
-import type { IntentLabel } from "../../intent/schema";
+import type { IntentLabel } from "../../intent/schema.js";
 
 const INTENT_CAPABILITIES: Record<IntentLabel, Capability[]> = {
   unknown: [],

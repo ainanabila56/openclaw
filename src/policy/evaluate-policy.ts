@@ -2,16 +2,16 @@ import type {
   ExecutionPolicyV2,
   PolicyEvalContext,
   PolicyEvalResult,
-} from "./policy-types";
+} from "./policy-types.js";
 
-import { isCapabilityAllowed } from "../agent/governance/intentCapabilities";
+import { isCapabilityAllowed } from "../agent/governance/intentCapabilities.js";
 
 
 export function evaluatePolicy(
   policy: ExecutionPolicyV2,
   ctx: PolicyEvalContext,
 ): PolicyEvalResult {
-  const rule = policy.rules.find(r => r.intent === ctx.intent);
+  const rule = policy.rules[ctx.intent];
 
   if (!rule) {
     return {
