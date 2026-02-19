@@ -11,13 +11,15 @@ import { LocalSmlStub } from "../intent-authority";
 import { LocalDevModel } from "../main-model/local-dev-model";
 
 import { InMemoryStore } from "../memory/in-memory-store";
+import { createMemory } from "../../memory/memory-gate";
+import type { WritableMemory } from "../memory/memory-types";
+
 import { planTool } from "../tools/tool-planner";
 
 import { LocalExecutor } from "../exec/local-executor";
 import * as crypto from "node:crypto";
 
 import { listTools } from "../../tools/registry";
-
 
 const memoryStore = new InMemoryStore();
 const SUMMARY_MAX_LEN = 500;
@@ -105,6 +107,8 @@ pushTrace("trace_start", {
   // -----------------------------
   // Policy: memory read (optional)
   // -----------------------------
+  const memory = createMemory();
+  
   let memorySummary: string | undefined;
 
   const memReadPolicy = evaluatePolicy(policyDef, {
@@ -143,31 +147,40 @@ pushTrace("trace_start", {
     requestedCapabilities: [Capability.RespondText, Capability.MemoryWrite],
   });
 
-  const memWriteAllowed = memWritePolicy.decision === "allow";
 
-if (memWriteAllowed) {
-  const summary =
-    typeof reply.summary === "string" && reply.summary.length > 0
-      ? reply.summary
-      : `last_user_message=${message.slice(0, 200)}`;
+   let memWriteAllowed = false;
 
-  await memoryStore.write(
-    { agentId, sessionId },
-    {
-      summary: clampSummary(summary),
-      updatedAtIso: new Date().toISOString(),
-    }
-  );
-}
+try {
+  if (memWritePolicy.decision === "allow") {
+    memWriteAllowed = true;
 
+    const rawSummary =
+      typeof reply.summary === "string" && reply.summary.length > 0
+        ? reply.summary
+        : `last_user_message=${message.slice(0, 200)}`;
 
-  pushTrace("memory_write", {
-    intent: intentResult.intent,
-    allowed: memWriteAllowed,
+    const clamped = clampSummary(rawSummary);
+
+    memory.writeSummary(sessionId, {
+      text: clamped,
+      tokens: clamped.length,
+    });
+  }
+} catch (err) {
+  pushTrace("memory_write_error", {
+    error: String(err),
   });
 
-  const executor = new LocalExecutor();  
+  throw err; // REQUIRED for Phase 20
+}
 
+pushTrace("memory_write", {
+  intent: intentResult.intent,
+  allowed: memWriteAllowed,
+});
+
+  const executor = new LocalExecutor(); 
+   
   const execResult = await executor.execute({
   message,
   intent: intentResult.intent,
@@ -200,6 +213,5 @@ return {
     trace: executionTrace,
   },
 };
-
 
 }

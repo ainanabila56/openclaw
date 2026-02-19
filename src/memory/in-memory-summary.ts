@@ -10,9 +10,6 @@ export class InMemorySummary implements WritableMemory {
   }
 
   writeSummary(sessionId: string, summary: MemorySummary): void {
-    if (summary.tokens > MAX_TOKENS) {
-      throw new Error("Memory summary exceeds token limit");
-    }
-    this.store.set(sessionId, summary);
-  }
+  throw new Error("Memory write blocked by Phase 20 memory seal");
+}
 }
