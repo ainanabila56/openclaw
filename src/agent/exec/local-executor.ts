@@ -61,7 +61,11 @@ export class LocalExecutor implements AgentExecutor {
       const tool = getTool(input.plannedTool);
       if (!tool) throw new Error(`Planned tool not registered: ${input.plannedTool}`);
 
-      const toolOut = tool.run({ text: input.message }, toolContext);
+      const parts = input.message.split(":");
+      const cleanedMessage =
+        parts.length > 1 ? parts.slice(1).join(":").trim() : input.message;
+
+      const toolOut = tool.run({ text: cleanedMessage }, toolContext);
 
       const executeEnd = new Date().toISOString();
 
