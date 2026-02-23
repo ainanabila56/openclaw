@@ -6,7 +6,7 @@ export interface MemoryRecord {
   updatedAt: string;
 }
 
-const MEMORY_PATH = path.join(__dirname, "../../.openclaw-memory.json");
+const MEMORY_PATH = path.resolve(process.cwd(), ".openclaw-memory.json");
 
 export function writeMemory(summary: string) {
   const record: MemoryRecord = {
