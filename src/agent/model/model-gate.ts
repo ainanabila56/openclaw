@@ -3,6 +3,8 @@ import type { ModelInput, ModelOutput } from "./model-types";
 import { LocalRuleModel } from "./local-model";
 import { allowModelUsage } from "./policy";
 import type { AgentExecInput } from "../exec/agent-executor";
+import { LocalDevModel } from "../main-model/local-dev-model";
+import { Input } from "@mariozechner/pi-tui";
 
 export function buildModelInput(
   execInput: AgentExecInput,
@@ -21,14 +23,14 @@ export function buildModelInput(
         false,
     },
     prompt,
+    intent: execInput.intent,
   };
 }
 
-export async function runModelIfEnabled(
-  input: ModelInput
-): Promise<ModelOutput | null> {
-  if (!allowModelUsage()) return null;
-
-  const model = new LocalRuleModel();
-  return model.run(input);
+export async function runModelIfEnabled(input: ModelInput) {
+  return await LocalDevModel.generate({
+    message: input.prompt ?? input.message ?? "",
+    intent: input.intent ?? "unknown",
+    memorySummary: undefined,
+  });
 }

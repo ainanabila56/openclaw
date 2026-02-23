@@ -9,6 +9,7 @@ export type ModelPolicyContext = {
 export type ModelInput = {
   readonly policy: ModelPolicyContext;
   readonly prompt: string; // already constructed, sanitized, executor-owned
+  readonly intent: string;
 };
 
 export type ModelOutput = {

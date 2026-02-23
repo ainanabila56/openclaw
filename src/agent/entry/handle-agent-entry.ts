@@ -8,7 +8,6 @@ import { executionTrace } from "../exec/trace";
 import { Capability } from "../exec/capabilities";
 
 import { LocalSmlStub } from "../intent-authority";
-import { LocalDevModel } from "../main-model/local-dev-model";
 
 import { InMemoryStore } from "../memory/in-memory-store";
 import { createMemory } from "../../memory/memory-gate";
@@ -129,56 +128,6 @@ pushTrace("trace_start", {
     allowed: memReadAllowed,
   });
 
-  // -----------------------------
-  // Governed model reply
-  // -----------------------------
-  const reply = await LocalDevModel.generate({
-    message,
-    intent: intentResult.intent,
-    memorySummary,
-  });
-
-  // -----------------------------
-  // Policy: memory write (optional)
-  // -----------------------------
-  const memWritePolicy = evaluatePolicy(policyDef, {
-    intent: intentResult.intent,
-    executorId: "local",
-    requestedCapabilities: [Capability.RespondText, Capability.MemoryWrite],
-  });
-
-
-   let memWriteAllowed = false;
-
-try {
-  if (memWritePolicy.decision === "allow") {
-    memWriteAllowed = true;
-
-    const rawSummary =
-      typeof reply.summary === "string" && reply.summary.length > 0
-        ? reply.summary
-        : `last_user_message=${message.slice(0, 200)}`;
-
-    const clamped = clampSummary(rawSummary);
-
-    memory.writeSummary(sessionId, {
-      text: clamped,
-      tokens: clamped.length,
-    });
-  }
-} catch (err) {
-  pushTrace("memory_write_error", {
-    error: String(err),
-  });
-
-  throw err; // REQUIRED for Phase 20
-}
-
-pushTrace("memory_write", {
-  intent: intentResult.intent,
-  allowed: memWriteAllowed,
-});
-
   const executor = new LocalExecutor(); 
    
   const execResult = await executor.execute({
@@ -195,6 +144,7 @@ pushTrace("memory_write", {
     Capability.MemoryRead,
   ],
   trace: executionTrace,
+
 });
 
 // ------------------------------------------------------------

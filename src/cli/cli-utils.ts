@@ -40,13 +40,25 @@ export async function runCommandWithRuntime(
   try {
     await action();
   } catch (err) {
-    if (onError) {
-      onError(err);
-      return;
-    }
-    runtime.error(String(err));
-    runtime.exit(1);
+  if (onError) {
+    onError(err);
+    return;
   }
+
+  // 🔎 If trace was attached to error, print it first
+  if (err && typeof err === "object") {
+    const maybeTrace = (err as any).__trace;
+    if (Array.isArray(maybeTrace)) {
+      console.log(JSON.stringify(maybeTrace, null, 2));
+    }
+  }
+
+  runtime.error(
+    err instanceof Error ? err.message : String(err)
+  );
+
+  runtime.exit(1);
+}
 }
 
 export function resolveOptionFromCommand<T>(

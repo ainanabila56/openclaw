@@ -14,8 +14,6 @@ const RULES: Record<IntentLabel, IntentPolicyRule> = {
     allowExecutors: ["local", "cli"],
     allowCapabilities: [
       Capability.RespondText,
-      Capability.MemoryRead,
-      Capability.MemoryWrite,
     ],
   },
 
@@ -36,7 +34,6 @@ const RULES: Record<IntentLabel, IntentPolicyRule> = {
       Capability.RespondText,
       Capability.ToolInvoke,
       Capability.MemoryRead,
-      Capability.MemoryWrite,
     ],
   },
 

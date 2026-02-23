@@ -77,7 +77,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.openclaw.ai/cli/age
       // Build default deps (keeps parity with other commands; future-proofing).
       const deps = createDefaultDeps();
       await runCommandWithRuntime(defaultRuntime, async () => {
-        await agentCliCommand(opts, defaultRuntime, deps);
+        await agentCliCommand(deps, defaultRuntime, opts);
       });
     });
 

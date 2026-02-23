@@ -48,48 +48,7 @@ export class LocalExecutor implements AgentExecutor {
     };
 
     // ------------------------------------------------------------
-    // 1) MODEL PATH (isolated; NO memory writes in Phase 20)
-    // ------------------------------------------------------------
-    const prompt = summary
-      ? `Context: ${summary.text}\n\nUser: ${input.message}`
-      : `User: ${input.message}`;
-
-    const modelInput = buildModelInput(input, prompt);
-    const modelOut = await runModelIfEnabled(modelInput);
-
-    if (modelOut) {
-
-    const executeEnd = new Date().toISOString();
-
-    input.trace?.push({
-      stage: "execute_end",
-      timestamp: executeEnd,
-      request_id: input.requestId,
-      executor_outcome: "success",
-      path: "model",
-    });
-
-      return {
-        payloads: [
-          {
-            text: summary
-              ? `Context: ${summary.text}\n\n${modelOut.text}`
-              : modelOut.text,
-          },
-        ],
-        meta: {
-          executor: "local",
-	  path: "model",
-          model: "rule-based",
-          memory: "sealed",
-          memory_write: false,
-	  trace: input.trace
-        },
-      };
-    }
-
-    // ------------------------------------------------------------
-    // 2) TOOL PATH (pure, sync, NO memory write)
+    // 1) TOOL PATH (pure, sync, NO memory write)
     // ------------------------------------------------------------
     if (
       input.allowedCapabilities?.includes(Capability.ToolInvoke) &&
@@ -122,6 +81,47 @@ export class LocalExecutor implements AgentExecutor {
           executor: "local",
 	  path: "tool",
           tool: tool.name,
+          memory: "sealed",
+          memory_write: false,
+	  trace: input.trace
+        },
+      };
+    }
+
+    // ------------------------------------------------------------
+    // 2) MODEL PATH (isolated; NO memory writes in Phase 20)
+    // ------------------------------------------------------------
+    const prompt = summary
+      ? `Context: ${summary.text}\n\nUser: ${input.message}`
+      : `User: ${input.message}`;
+
+    const modelInput = buildModelInput(input, prompt);
+    const modelOut = await runModelIfEnabled(modelInput);
+
+    if (modelOut) {
+
+    const executeEnd = new Date().toISOString();
+
+    input.trace?.push({
+      stage: "execute_end",
+      timestamp: executeEnd,
+      request_id: input.requestId,
+      executor_outcome: "success",
+      path: "model",
+    });
+
+      return {
+        payloads: [
+          {
+            text: summary
+              ? `Context: ${summary.text}\n\n${modelOut.text}`
+              : modelOut.text,
+          },
+        ],
+        meta: {
+          executor: "local",
+	  path: "model",
+          model: "rule-based",
           memory: "sealed",
           memory_write: false,
 	  trace: input.trace
