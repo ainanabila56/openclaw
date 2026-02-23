@@ -10,8 +10,12 @@ import type { PureToolContext } from "../../tools/tool";
 
 import { createMemory } from "../../memory/memory-gate";
 import type { ReadOnlyMemory } from "../../memory/memory-types";
+import { writeMemory, readMemory } from "../../memory/store";
 
 import { buildModelInput, runModelIfEnabled } from "../model/model-gate";
+
+import { IntentResult } from "../../intent/schema.ts";
+
 
 export class LocalExecutor implements AgentExecutor {
   readonly id = "local";
@@ -64,7 +68,7 @@ export class LocalExecutor implements AgentExecutor {
       input.trace?.push({
         stage: "execute_end",
         timestamp: executeEnd,
-	request_id: input.requestId,
+	      request_id: input.requestId,
         executor_outcome: "success",
         path: "tool",
       });
@@ -79,11 +83,11 @@ export class LocalExecutor implements AgentExecutor {
         ],
         meta: {
           executor: "local",
-	  path: "tool",
+	        path: "tool",
           tool: tool.name,
           memory: "sealed",
           memory_write: false,
-	  trace: input.trace
+	        trace: input.trace
         },
       };
     }
@@ -95,10 +99,53 @@ export class LocalExecutor implements AgentExecutor {
       ? `Context: ${summary.text}\n\nUser: ${input.message}`
       : `User: ${input.message}`;
 
-    const modelInput = buildModelInput(input, prompt);
-    const modelOut = await runModelIfEnabled(modelInput);
+    // ------------------------------------
+    // MEMORY READ
+    // ------------------------------------
+    const memoryRecord = readMemory();
+
+    // Normalize summary (string or object)
+    const memorySummary =
+      typeof memoryRecord === "string"
+        ? memoryRecord
+        : memoryRecord?.summary;
+
+    if (memorySummary) {
+      input.trace.push({
+        stage: "memory_read",
+        timestamp: new Date().toISOString(),
+        summary: memorySummary,
+      });
+    }
+
+    // ------------------------------------
+    // CLEAN CHAT PREFIX (if present)
+    // ------------------------------------
+    const cleanedMessage =
+      input.intent === "chat"
+        ? input.message.replace(/^chat:\s*/i, "")
+        : input.message;
+
+    // ------------------------------------
+    // MODEL CALL
+    // ------------------------------------
+    const modelOut = await runModelIfEnabled({
+      message: cleanedMessage,
+      intent: input.intent ?? "unknown",
+      memorySummary: memorySummary,
+    });
 
     if (modelOut) {
+
+      if (modelOut.summary) {
+    writeMemory(modelOut.summary);
+
+    input.trace.push({
+      stage: "memory_write",
+      timestamp: new Date().toISOString(),
+      summary: modelOut.summary,
+    });
+  }
 
     const executeEnd = new Date().toISOString();
 
@@ -120,11 +167,11 @@ export class LocalExecutor implements AgentExecutor {
         ],
         meta: {
           executor: "local",
-	  path: "model",
+	        path: "model",
           model: "rule-based",
-          memory: "sealed",
-          memory_write: false,
-	  trace: input.trace
+          memory: "controlled",
+          memory_write: !!modelOut.summary,
+	        trace: input.trace
         },
       };
     }
@@ -152,11 +199,11 @@ export class LocalExecutor implements AgentExecutor {
       ],
       meta: {
         executor: "local",
-	path: "fallback",
+	      path: "fallback",
         deterministic: true,
         memory: "sealed",
         memory_write: false,
-	trace: input.trace
+	      trace: input.trace
       },
     };
     } catch (err: any) {

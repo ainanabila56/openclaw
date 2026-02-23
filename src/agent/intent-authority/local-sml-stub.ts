@@ -25,6 +25,13 @@ function classify(message: string): IntentAuthorityResult {
   }
 
   // ------------------------------------------------------------
+  // Explicit chat intent (model path)
+  // ------------------------------------------------------------
+  if (m.startsWith("chat:")) {
+    return { intent: "chat", confidence: 0.9 };
+  }
+
+  // ------------------------------------------------------------
   // Normal greeting / system query
   // ------------------------------------------------------------
   if (m.includes("hello") || m.includes("hi")) {

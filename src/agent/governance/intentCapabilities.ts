@@ -20,6 +20,12 @@ const INTENT_CAPABILITIES: Record<IntentLabel, Capability[]> = {
   user_message: [
     Capability.RespondText,
   ],
+
+  chat: [
+  Capability.RespondText,
+  Capability.MemoryRead,
+  Capability.MemoryWrite,
+],
 };
 
 export function isCapabilityAllowed(

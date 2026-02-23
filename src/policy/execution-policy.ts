@@ -37,6 +37,16 @@ const RULES: Record<IntentLabel, IntentPolicyRule> = {
     ],
   },
 
+  chat: {
+    intent: "chat",
+    allowExecutors: ["local", "cli"],
+    allowCapabilities: [
+      Capability.RespondText,
+      Capability.MemoryRead,
+      Capability.MemoryWrite,
+    ],
+  },
+
 };
 
 const POLICY: ExecutionPolicyV2 = {

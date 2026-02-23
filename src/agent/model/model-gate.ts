@@ -31,6 +31,6 @@ export async function runModelIfEnabled(input: ModelInput) {
   return await LocalDevModel.generate({
     message: input.prompt ?? input.message ?? "",
     intent: input.intent ?? "unknown",
-    memorySummary: undefined,
+    memorySummary: input.memorySummary, 
   });
 }

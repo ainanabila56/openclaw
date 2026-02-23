@@ -3,6 +3,7 @@ export const INTENTS = [
   "system_query",
   "user_message",
   "transform_text",
+  "chat",
 ] as const;
 
 export type IntentLabel = (typeof INTENTS)[number];
